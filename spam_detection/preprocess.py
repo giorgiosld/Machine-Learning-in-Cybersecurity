@@ -31,17 +31,16 @@ def manage_file(file, directory, word_counts):
             count_words(words, word_counts)
 
 # function to manage directory and files returning the sorted word count dictionary
-def preprocess_data(directory):
+def preprocess_data(directory, limit=2000):
     word_counts = dict()
     directory = os.path.abspath(directory)
     files = os.listdir(directory)
     for file in files:
         manage_file(file, directory, word_counts)
     sorted_word_counts = dict(sorted(word_counts.items(), key=lambda item: item[1], reverse=True))
-    return sorted_word_counts
+    limited_word_counts = list(sorted_word_counts.items())[:limit]
+    return limited_word_counts
 
 if __name__ == '__main__':
-    # preprocess_data('test-mails')
-    wc = preprocess_data('train-mails')
-    print_insight(wc)
+    dictionary = preprocess_data('train-mails')
 
