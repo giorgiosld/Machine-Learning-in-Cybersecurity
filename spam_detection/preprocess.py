@@ -6,11 +6,13 @@ Each file preprocessed represent an email that will be turned into word count ve
 
 import os
 
+# function to print insights from the sorted word count dictionary
 def print_insight(sorted_word_counts):
     for key, value in sorted_word_counts.items():
         print(key, ":", value)
     print("Total words:", len(sorted_word_counts))
 
+# function to count the words in a line
 def count_words(words, word_counts):
     for word in words:
         if word.isalpha():
@@ -19,6 +21,7 @@ def count_words(words, word_counts):
             else:
                 word_counts[word] = 1
 
+# function to manage each file's lines in the directory
 def manage_file(file, directory, word_counts):
     with open(os.path.join(directory, file), 'r') as f:
         next(f)
@@ -27,6 +30,7 @@ def manage_file(file, directory, word_counts):
             words = line.split(" ")
             count_words(words, word_counts)
 
+# function to manage directory and files returning the sorted word count dictionary
 def preprocess_data(directory):
     word_counts = dict()
     directory = os.path.abspath(directory)
@@ -37,7 +41,6 @@ def preprocess_data(directory):
     return sorted_word_counts
 
 if __name__ == '__main__':
-
     # preprocess_data('test-mails')
     wc = preprocess_data('train-mails')
     print_insight(wc)
