@@ -1,7 +1,6 @@
 """
-File to preprocess the data given a directory containing files with words that need to be counted.
-The final result is a dictionary of words with choosen the 2000 most common words.
-Each file preprocessed represent an email that will be turned into word count vector.
+This script preprocesses data from a directory of text files, generating a dictionary of the 2000 most common words and
+ converting each file into a word count vector.
 """
 
 import os

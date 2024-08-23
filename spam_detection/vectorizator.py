@@ -1,3 +1,8 @@
+"""
+This script processes emails from a specified directory by first applying custom preprocessing from `preprocess.py`,
+then vectorizes the content using `CountVectorizer` from `sklearn`, and finally converts the vectorized data into a
+pandas DataFrame, including an 'is_spam' column to label each email as spam (1) or not (0).
+"""
 import os
 
 from sklearn.feature_extraction.text import CountVectorizer
@@ -36,8 +41,8 @@ def vectorization(directory):
     X, vectorizer = vectorize_data(emails, vocabulary)
     df = converter(X, vectorizer.vocabulary, file_names)
     df['is_spam'] = [1 if file.startswith('spm') else 0 for file in file_names]
-    return df, vectorizer
+    return df
 
 if __name__ == '__main__':
-    df, vectorizer = vectorization('train-mails')
+    df = vectorization('train-mails')
     print(df.head())
