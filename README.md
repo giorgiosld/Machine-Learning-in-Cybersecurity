@@ -6,6 +6,7 @@ to address common cybersecurity challenges such as spam detection, bank fraud de
 
 ## Repository Structure
 The repository is structured as follows:
+- [Bank Fraud Detection](bank_fraud/): Contains the code developed during the second lesson of the course;
 - [Spam Detection](spam_detection/): Contains the code developed for the first assignment of the course;
 
 ## Prerequisites
