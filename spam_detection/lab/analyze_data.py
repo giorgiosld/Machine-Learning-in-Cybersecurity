@@ -11,8 +11,8 @@ import seaborn as sb
 from vectorizator import vectorization
 
 # Vectorize the training and testing datasets
-df_train = vectorization('train-mails')
-df_test = vectorization('test-mails')
+df_train = vectorization('../dataset/train-mails')
+df_test = vectorization('../dataset/test-mails')
 
 # Separate features and labels for training and test data
 X_train = df_train.drop(columns=['is_spam'])

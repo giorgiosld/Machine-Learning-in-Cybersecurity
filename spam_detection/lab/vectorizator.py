@@ -1,6 +1,6 @@
 """
 This script processes emails from a specified directory by first applying custom preprocessing from `preprocess.py`,
-then vectorizes the content using `CountVectorizer` from `sklearn`, and finally converts the vectorized data into a
+then vectorize the content using `CountVectorizer` from `sklearn`, and finally converts the vectorized data into a
 pandas DataFrame, including an 'is_spam' column to label each email as spam (1) or not (0).
 """
 import os
@@ -19,7 +19,6 @@ def vectorize_data(data, vocabulary):
 def manage_emails(directory):
     emails = []
     file_names = []
-    directory = os.path.abspath(directory)
     files = os.listdir(directory)
     for file in files:
         with open(os.path.join(directory, file), 'r') as f:
@@ -35,14 +34,16 @@ def converter(X, feature_names, file_names):
 
 # function to wrap the vectorization process to return a pandas dataframe usable in other classes
 def vectorization(directory):
-    emails, file_names = manage_emails(directory)
-    word_counts = preprocess_data('train-mails')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    emails_dir = os.path.abspath(os.path.join(script_dir, directory))
+
+    emails, file_names = manage_emails(emails_dir)
+
+    preprocess_dir = os.path.abspath(os.path.join(script_dir, '../dataset/train-mails'))
+    word_counts = preprocess_data(preprocess_dir)
+
     vocabulary = [word for word, count in word_counts]
     X, vectorizer = vectorize_data(emails, vocabulary)
     df = converter(X, vectorizer.vocabulary, file_names)
     df['is_spam'] = [1 if file.startswith('spm') else 0 for file in file_names]
     return df
-
-if __name__ == '__main__':
-    df = vectorization('train-mails')
-    print(df.head())

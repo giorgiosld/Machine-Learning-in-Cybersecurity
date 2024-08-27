@@ -39,7 +39,3 @@ def preprocess_data(directory, limit=2000):
     sorted_word_counts = dict(sorted(word_counts.items(), key=lambda item: item[1], reverse=True))
     limited_word_counts = list(sorted_word_counts.items())[:limit]
     return limited_word_counts
-
-if __name__ == '__main__':
-    dictionary = preprocess_data('train-mails')
-
