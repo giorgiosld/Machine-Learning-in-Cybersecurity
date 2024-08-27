@@ -5,9 +5,11 @@ The objective of this repository is to explore and implement various machine lea
 to address common cybersecurity challenges such as spam detection, bank fraud detection and more.
 
 ## Repository Structure
-The repository is structured as follows:
-- [Bank Fraud Detection](bank_fraud/): Contains the code developed during the second lesson of the course;
-- [Spam Detection](spam_detection/): Contains the code developed for the first assignment of the course;
+The repository is organized according to the key topics explored during the "Machine Learning in Cybersecurity" course:
+- [Bank Fraud Detection](bank_fraud/): This directory contains the code and resources related to the bank fraud
+detection topic.
+- [Spam Detection](spam_detection/): This directory contains the code and resources for the spam detection topic, which 
+was addressed in the first assignment of the course.
 
 ## Prerequisites
 - Python 3.x;
