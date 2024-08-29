@@ -4,9 +4,9 @@ then vectorize the content using `CountVectorizer` from `sklearn`, and finally c
 pandas DataFrame, including an 'is_spam' column to label each email as spam (1) or not (0).
 """
 import os
+from utils.preprocess import preprocess_data
 
 from sklearn.feature_extraction.text import CountVectorizer
-from spam_detection.assignment.utils.preprocess import preprocess_data
 import pandas as pd
 
 # create a vectorizer object to transform the data into a word count vector
@@ -40,7 +40,7 @@ def vectorization(directory, dictionary_dim):
 
     emails, file_names = manage_emails(emails_dir)
 
-    preprocess_dir = os.path.abspath(os.path.join(script_dir, '../dataset/train-mails'))
+    preprocess_dir = os.path.abspath(os.path.join(script_dir, '../../dataset/train-mails'))
     word_counts = preprocess_data(preprocess_dir, dictionary_dim)
 
     vocabulary = [word for word, count in word_counts]
