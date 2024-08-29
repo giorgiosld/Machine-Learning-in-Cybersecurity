@@ -6,7 +6,7 @@ pandas DataFrame, including an 'is_spam' column to label each email as spam (1) 
 import os
 
 from sklearn.feature_extraction.text import CountVectorizer
-from preprocess import preprocess_data
+from spam_detection.assignment.utils.preprocess import preprocess_data
 import pandas as pd
 
 # create a vectorizer object to transform the data into a word count vector

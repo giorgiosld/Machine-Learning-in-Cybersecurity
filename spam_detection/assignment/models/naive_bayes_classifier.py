@@ -15,6 +15,10 @@ performance_metrics = []
 
 dict_dim = [100, 500, 1000, 2000, 3000]
 
+# TODO: Move into function and call it for each dictionary dimension. Useful for testing different dimensions.
+# TODO: Function for vectorization and another one for plot. In the end also a function to evaluate various metrics.
+# TODO:  Take in account also support that means the normal distribution of the dataset
+# TODO: Modify the ROC to have a single curve that plot the different dictionary dimensions and dd threshold
 for dim in dict_dim:
     # Vectorize the training and testing datasets
     df_train = vectorization('../dataset/train-mails', dim)
