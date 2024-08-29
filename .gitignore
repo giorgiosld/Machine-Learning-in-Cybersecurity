@@ -1,3 +1,8 @@
+spam_detection/ling-spam.zip
+spam_detection/lingspam_public.tar.gz
+spam_detection/lingspam_public/*
+
+bank_fraud/creditcard.csv
 .git/
 venv/
 .idea/
