@@ -44,7 +44,7 @@ for k in k_params:
     reports[k] = classification_report(y_test, y_test_pred, output_dict=True)
 
 # save the plot and show it
-save_path = '../resources/knn_roc_curve.png'
+save_path = 'resources/knn_roc_curve.png'
 save_plot(save_path)
 
 # Print the performance metrics
