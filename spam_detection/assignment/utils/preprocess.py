@@ -1,3 +1,6 @@
+"""
+This module is used to preprocess the data in the dataset. It counts the words in the dataset and returns the sorted word count dictionary.
+"""
 import os
 
 word_counts = dict()
