@@ -4,18 +4,17 @@ It uses the `MultinomialNB` class from `sklearn` to train the model and predict 
 calculates the accuracy, precision, recall, and F1 score for each dictionary dimension and plots the ROC curve for each
 dimension.
 """
-import pandas as pd
-from matplotlib import pyplot as plt
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc, classification_report
 
 from utils.vectorizator import vectorization
-from utils.data_analysis import prepare_data, calculate_performance_metrics, save_plot, compute_plot_roc_curve
+from utils.data_analysis import prepare_data, calculate_performance_metrics, save_plot, compute_plot_roc_curve, aggregate_classification_reports, display_classification_reports
 
+# Initialize parameters used for the experiment
 performance_metrics = []
 dict_dim = [100, 500, 1000, 2000, 3000]
+reports = {}
 
-# TODO: Take in account also support that means the normal distribution of the dataset
 for dim in dict_dim:
 
     # Vectorize the training and testing datasets
@@ -39,16 +38,15 @@ for dim in dict_dim:
     fpr, tpr, _ = roc_curve(y_test, y_test_pred)
     roc_auc = auc(fpr, tpr)
 
-    compute_plot_roc_curve(fpr, tpr, roc_auc, f'Dictionary Dimension = {dim} (AUC = {roc_auc:.2f})')
+    compute_plot_roc_curve(fpr, tpr, f'Dictionary Dimension = {dim} (AUC = {roc_auc:.2f})')
 
+    # Store the classification report for later aggregation
+    reports[dim] = classification_report(y_test, y_test_pred, output_dict=True)
 
-# Define the path to save the file
-save_path = '../resources/naive_bayes_roc_curve.png'
-save_plot(save_path, plt)
-
-# Show the plot
-plt.show()
+# save the plot and show it
+save_path = 'resources/naive_bayes_roc_curve.png'
+save_plot(save_path)
 
 # Print the performance metrics
-performance_metrics_df = pd.DataFrame(performance_metrics, index=dict_dim)
-print(performance_metrics_df)
+result_df = aggregate_classification_reports(reports)
+display_classification_reports(result_df)
