@@ -8,7 +8,8 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import roc_curve, auc, classification_report
 
 from utils.vectorizator import vectorization
-from utils.data_analysis import prepare_data, calculate_performance_metrics, save_plot, compute_plot_roc_curve, aggregate_classification_reports, display_classification_reports
+from utils.data_analysis import prepare_data, calculate_performance_metrics, save_plot, compute_plot_roc_curve, \
+    aggregate_classification_reports, display_classification_reports
 
 # Initialize parameters used for the experiment
 performance_metrics = []
