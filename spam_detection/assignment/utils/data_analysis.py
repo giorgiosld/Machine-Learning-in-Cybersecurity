@@ -75,7 +75,8 @@ def display_classification_reports(result_df):
         if row['label'] in ['accuracy', 'macro avg', 'weighted avg']:
             formatted_report += f"           {row['label']:>12}         {row['precision']:.3f}           {row['recall']:.3f}        {row['f1-score']:.3f}          {row['support']:6.3f}\n"
         else:
-            formatted_report += f"{int(row['dimension']):>10} {row['label']:>12}         {row['precision']:.3f}           {row['recall']:.3f}        {row['f1-score']:.3f}          {row['support']:6.3f}\n"
+            # formatted_report += f"{int(row['dimension']):>10} {row['label']:>12}         {row['precision']:.3f}           {row['recall']:.3f}        {row['f1-score']:.3f}          {row['support']:6.3f}\n"
+            formatted_report += f"{row['dimension']:>10} {row['label']:>12}         {row['precision']:.3f}           {row['recall']:.3f}        {row['f1-score']:.3f}          {row['support']:6.3f}\n"
 
         if (i < len(result_df) - 1 and result_df.loc[i, 'dimension'] != result_df.loc[i + 1, 'dimension']):
             formatted_report += "\n"

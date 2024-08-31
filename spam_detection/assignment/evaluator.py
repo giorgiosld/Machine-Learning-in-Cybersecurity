@@ -4,7 +4,7 @@ from models.knn_classifier import train_best_model as run_knn
 from models.logistic_regression_classifier import train_best_model as run_logistic_regression
 from models.naive_bayes_classifier import train_best_model as run_naive_bayes
 from utils.vectorizator import vectorization
-from utils.data_analysis import prepare_data
+from utils.data_analysis import prepare_data, save_plot
 
 # TODO: Implement the possibility to pass the path for the dataset
 
@@ -38,5 +38,4 @@ plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.title('Comparison of ROC Curves')
 plt.legend(loc="lower right")
-plt.savefig('resources/comparison_roc_curve.png')
-plt.show()
+save_plot('resources/comparison_roc_curve.png')
