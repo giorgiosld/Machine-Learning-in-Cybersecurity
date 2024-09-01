@@ -5,7 +5,7 @@ calculates the accuracy, precision, recall, and F1 score for each dictionary dim
 dimension.
 """
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import roc_curve, auc, classification_report, roc_auc_score
+from sklearn.metrics import roc_curve, classification_report, roc_auc_score
 
 from utils.vectorizator import vectorization
 from utils.data_analysis import prepare_data, calculate_performance_metrics, save_plot, compute_plot_roc_curve, \
