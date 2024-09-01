@@ -1,30 +1,56 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 
-from models.knn_classifier import train_best_model as run_knn
+from models.knn_classifier import run_knn
 from models.logistic_regression_classifier import train_best_model as run_logistic_regression
+from models.logistic_regression_classifier import run_lr_comparison
 from models.naive_bayes_classifier import train_best_model as run_naive_bayes
 from utils.vectorizator import vectorization
 from utils.data_analysis import prepare_data, save_plot
 
-# TODO: Implement the possibility to pass the path for the dataset
+rows = []
 
 # Vectorize the training and testing the datasets with different models
-df_train = vectorization('../../dataset/train-mails', 1000)
-df_test = vectorization('../../dataset/test-mails', 1000)
+df_train = vectorization('../../dataset/train-mails', 2000)
+df_test = vectorization('../../dataset/test-mails', 2000)
 
 # Separate features and labels for training and test data
 X_train, y_train, X_test, y_test = prepare_data(df_train, df_test)
 
-# Run Naive Bayes
+# Run Naive Bayes the plot will not be displayed because 1000 is already the best dimension
 nb_recall, nb_fpr, nb_tpr, nb_roc_auc = run_naive_bayes(X_train, y_train, X_test, y_test)
+
+rows.append({
+    'Model': 'Naive Bayes',
+    'Recall': nb_recall,
+    'AUC': nb_roc_auc,
+    'Best Parameter': 2000
+})
 
 # Run Logistic Regression
 c_values = [0.0001, 0.1, 1, 10, 1e4]
 lr_recall, lr_fpr, lr_tpr, lr_roc_auc, best_c = run_logistic_regression(X_train, y_train, X_test, y_test, c_values)
 
+# Run Logistic Regression comparing the recall and precision metric between test set and training set
+run_lr_comparison(X_train, y_train, X_test, y_test, c_values)
+
+rows.append({
+    'Model': 'Logistic Regression',
+    'Recall': lr_recall,
+    'AUC': lr_roc_auc,
+    'Best Parameter': best_c
+})
+
 # Run KNN
 k_values = [4, 6, 8, 10, 15, 20]
 knn_recall, knn_fpr, knn_tpr, knn_roc_auc, best_k = run_knn(X_train, y_train, X_test, y_test, k_values)
+
+rows.append({
+    'Model': 'KNN',
+    'Recall': knn_recall,
+    'AUC': knn_roc_auc,
+    'Best Parameter': best_k
+})
 
 # Plot the ROC curves
 plt.figure()
@@ -39,3 +65,7 @@ plt.ylabel('True Positive Rate')
 plt.title('Comparison of ROC Curves')
 plt.legend(loc="lower right")
 save_plot('resources/comparison_roc_curve.png')
+
+# Convert the list of dictionaries into a DataFrame for easier comparison
+result_df = pd.DataFrame(rows)
+print(f"Metrics of comparison between best paramaters in each model \n{result_df.round(4)}")
