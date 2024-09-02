@@ -5,6 +5,7 @@ from models.knn_classifier import run_knn
 from models.logistic_regression_classifier import train_best_model as run_logistic_regression
 from models.logistic_regression_classifier import run_lr_comparison
 from models.naive_bayes_classifier import train_best_model as run_naive_bayes
+from models.svm_classifier import run_svm
 from utils.vectorizator import vectorization
 from utils.data_analysis import prepare_data, save_plot
 
@@ -52,12 +53,23 @@ rows.append({
     'Best Parameter': best_k
 })
 
+# Run support vector machine
+svm_recall, svm_fpr, svm_tpr, svm_roc_auc = run_svm(X_train, y_train, X_test, y_test)
+
+rows.append({
+    'Model': 'SVM',
+    'Recall': svm_recall,
+    'AUC': svm_roc_auc,
+    'Best Parameter': 'Linear'
+})
+
 # Plot the ROC curves
 plt.figure()
 
 plt.plot(nb_fpr, nb_tpr, label=f"Naive Bayes (AUC = {nb_roc_auc:.3f})")
 plt.plot(lr_fpr, lr_tpr, label=f"Logistic Regression (C={best_c}, AUC = {lr_roc_auc:.3f})")
 plt.plot(knn_fpr, knn_tpr, label=f"KNN (k={best_k}, AUC = {knn_roc_auc:.3f})")
+plt.plot(svm_fpr, svm_tpr, label=f"SVM (AUC = {svm_roc_auc:.3f})")
 
 plt.plot([0, 1], [0, 1], 'r--')
 plt.xlabel('False Positive Rate')
