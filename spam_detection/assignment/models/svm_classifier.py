@@ -18,7 +18,7 @@ reports = {}
 
 def run_svm(X_train, y_train, X_test, y_test, kernels):
     best_recall = 0
-    best_k = None
+    best_kernel = None
     best_fpr, best_tpr = None, None
     best_roc_auc = None
 
