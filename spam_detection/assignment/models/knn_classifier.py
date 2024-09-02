@@ -64,9 +64,11 @@ def run_knn(X_train, y_train, X_test, y_test, k_params):
 
 
 if __name__ == '__main__':
-    # Vectorize the training and testing datasets
-    df_train = vectorization('../../dataset/train-mails', 2000)
-    df_test = vectorization('../../dataset/test-mails', 2000)
+    PATH = '../../dataset/'
+
+    # Vectorize the training and testing the datasets with different models
+    df_train = vectorization(PATH + 'train-mails', 2000)
+    df_test = vectorization(PATH + 'test-mails', 2000)
 
     # Separate features and labels for training and test data
     X_train, y_train, X_test, y_test = prepare_data(df_train, df_test)

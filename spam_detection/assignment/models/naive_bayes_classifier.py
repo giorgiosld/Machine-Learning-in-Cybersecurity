@@ -52,7 +52,7 @@ def run_naive_bayes():
         # Predict the labels for the test set
         y_test_pred = clf.predict(X_test)
 
-        # **Predict probabilities for ROC AUC**
+        # Predict probabilities for ROC AUC
         y_test_prob = clf.predict_proba(X_test)[:, 1]
 
         # Calculate and store the performance metrics

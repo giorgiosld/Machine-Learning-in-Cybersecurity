@@ -11,9 +11,11 @@ from utils.data_analysis import prepare_data, save_plot
 
 rows = []
 
+PATH = '../../dataset/'
+
 # Vectorize the training and testing the datasets with different models
-df_train = vectorization('../../dataset/train-mails', 2000)
-df_test = vectorization('../../dataset/test-mails', 2000)
+df_train = vectorization(PATH + 'train-mails', 2000)
+df_test = vectorization(PATH + 'test-mails', 2000)
 
 # Separate features and labels for training and test data
 X_train, y_train, X_test, y_test = prepare_data(df_train, df_test)
@@ -54,13 +56,14 @@ rows.append({
 })
 
 # Run support vector machine
-svm_recall, svm_fpr, svm_tpr, svm_roc_auc = run_svm(X_train, y_train, X_test, y_test)
+kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+svm_recall, svm_fpr, svm_tpr, svm_roc_auc, best_kernel = run_svm(X_train, y_train, X_test, y_test, kernels)
 
 rows.append({
     'Model': 'SVM',
     'Recall': svm_recall,
     'AUC': svm_roc_auc,
-    'Best Parameter': 'Linear'
+    'Best Kernel': best_kernel
 })
 
 # Plot the ROC curves

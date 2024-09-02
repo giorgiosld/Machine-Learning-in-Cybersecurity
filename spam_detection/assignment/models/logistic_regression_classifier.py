@@ -98,9 +98,11 @@ def run_lr_comparison(X_train, y_train, X_test, y_test, c_values):
     print(result_df.round(4))
 
 if __name__ == '__main__':
+    PATH = '../../dataset/'
+
     # Vectorize the training and testing datasets
-    df_train = vectorization('../../dataset/train-mails', 2000)
-    df_test = vectorization('../../dataset/test-mails', 2000)
+    df_train = vectorization(PATH + 'train-mails', 2000)
+    df_test = vectorization(PATH + 'test-mails', 2000)
 
     # Separate features and labels for training and test data
     X_train, y_train, X_test, y_test = prepare_data(df_train, df_test)
