@@ -19,6 +19,7 @@ def run_knn(X_train, y_train, X_test, y_test, k_params):
 
     best_recall = 0
     best_k = None
+    best_report = None
     best_fpr, best_tpr = None, None
     best_roc_auc = None
 
@@ -45,6 +46,7 @@ def run_knn(X_train, y_train, X_test, y_test, k_params):
         recall = report['1']['recall']
         if recall > best_recall:
             best_recall = recall
+            best_report = report
             best_k = k
             best_fpr = fpr
             best_tpr = tpr
@@ -60,7 +62,8 @@ def run_knn(X_train, y_train, X_test, y_test, k_params):
     result_df = aggregate_classification_reports(reports)
     display_classification_reports(result_df)
 
-    return best_recall, best_fpr, best_tpr, best_roc_auc, best_k
+    # return best_recall, best_fpr, best_tpr, best_roc_auc, best_k
+    return best_report, best_fpr, best_tpr, best_roc_auc, best_k
 
 
 if __name__ == '__main__':

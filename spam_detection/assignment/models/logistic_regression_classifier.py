@@ -19,6 +19,7 @@ def train_best_model(X_train, y_train, X_test, y_test, c_values):
 
     best_recall = 0
     best_c = None
+    best_report = None
     best_fpr, best_tpr = None, None
     best_roc_auc = None
 
@@ -45,6 +46,7 @@ def train_best_model(X_train, y_train, X_test, y_test, c_values):
         recall = report['1']['recall']
         if recall > best_recall:
             best_recall = recall
+            best_report = report
             best_c = c_val
             best_fpr = fpr
             best_tpr = tpr
@@ -61,7 +63,8 @@ def train_best_model(X_train, y_train, X_test, y_test, c_values):
     result_df = aggregate_classification_reports(reports)
     display_classification_reports(result_df)
 
-    return best_recall, best_fpr, best_tpr, best_roc_auc, best_c
+    # return best_recall, best_fpr, best_tpr, best_roc_auc, best_c
+    return best_report, best_fpr, best_tpr, best_roc_auc, best_c
 
 def run_lr_comparison(X_train, y_train, X_test, y_test, c_values):
 

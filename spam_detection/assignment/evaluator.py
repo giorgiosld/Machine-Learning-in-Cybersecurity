@@ -21,49 +21,61 @@ df_test = vectorization(PATH + 'test-mails', 2000)
 X_train, y_train, X_test, y_test = prepare_data(df_train, df_test)
 
 # Run Naive Bayes the plot will not be displayed because 1000 is already the best dimension
-nb_recall, nb_fpr, nb_tpr, nb_roc_auc = run_naive_bayes(X_train, y_train, X_test, y_test)
+best_report_nb, nb_fpr, nb_tpr, nb_roc_auc = run_naive_bayes(X_train, y_train, X_test, y_test)
 
 rows.append({
     'Model': 'Naive Bayes',
-    'Recall': nb_recall,
+    'Accuracy': best_report_nb['accuracy'],
+    'Recall': best_report_nb['1']['recall'],
+    'Precision': best_report_nb['1']['precision'],
+    'F1 Score': best_report_nb['1']['f1-score'],
     'AUC': nb_roc_auc,
     'Best Parameter': 2000
 })
 
 # Run Logistic Regression
 c_values = [0.0001, 0.1, 1, 10, 1e4]
-lr_recall, lr_fpr, lr_tpr, lr_roc_auc, best_c = run_logistic_regression(X_train, y_train, X_test, y_test, c_values)
+best_report_lr, lr_fpr, lr_tpr, lr_roc_auc, best_c = run_logistic_regression(X_train, y_train, X_test, y_test, c_values)
 
 # Run Logistic Regression comparing the recall and precision metric between test set and training set
 run_lr_comparison(X_train, y_train, X_test, y_test, c_values)
 
 rows.append({
     'Model': 'Logistic Regression',
-    'Recall': lr_recall,
+    'Accuracy': best_report_lr['accuracy'],
+    'Recall': best_report_lr['1']['recall'],
+    'Precision': best_report_lr['1']['precision'],
+    'F1 Score': best_report_lr['1']['f1-score'],
     'AUC': lr_roc_auc,
     'Best Parameter': best_c
 })
 
 # Run KNN
 k_values = [4, 6, 8, 10, 15, 20]
-knn_recall, knn_fpr, knn_tpr, knn_roc_auc, best_k = run_knn(X_train, y_train, X_test, y_test, k_values)
+best_report_knn, knn_fpr, knn_tpr, knn_roc_auc, best_k = run_knn(X_train, y_train, X_test, y_test, k_values)
 
 rows.append({
     'Model': 'KNN',
-    'Recall': knn_recall,
+    'Accuracy': best_report_knn['accuracy'],
+    'Recall': best_report_knn['1']['recall'],
+    'Precision': best_report_knn['1']['precision'],
+    'F1 Score': best_report_knn['1']['f1-score'],
     'AUC': knn_roc_auc,
     'Best Parameter': best_k
 })
 
 # Run support vector machine
 kernels = ['linear', 'poly', 'rbf', 'sigmoid']
-svm_recall, svm_fpr, svm_tpr, svm_roc_auc, best_kernel = run_svm(X_train, y_train, X_test, y_test, kernels)
+best_report_svm, svm_fpr, svm_tpr, svm_roc_auc, best_kernel = run_svm(X_train, y_train, X_test, y_test, kernels)
 
 rows.append({
     'Model': 'SVM',
-    'Recall': svm_recall,
+    'Accuracy': best_report_svm['accuracy'],
+    'Recall': best_report_svm['1']['recall'],
+    'Precision': best_report_svm['1']['precision'],
+    'F1 Score': best_report_svm['1']['f1-score'],
     'AUC': svm_roc_auc,
-    'Best Kernel': best_kernel
+    'Best Parameter': best_kernel
 })
 
 # Plot the ROC curves

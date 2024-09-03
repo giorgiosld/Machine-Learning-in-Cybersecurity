@@ -26,13 +26,13 @@ def train_best_model(X_train, y_train, X_test, y_test):
 
     # Calculate performance metrics
     report = classification_report(y_test, y_test_pred, output_dict=True)
-    recall = report['1']['recall']
+    # recall = report['1']['recall']
 
     # Calculate the ROC curve and AUC
     fpr, tpr, _ = roc_curve(y_test, y_test_prob)
     roc_auc = roc_auc_score(y_test, y_test_prob)
 
-    return recall, fpr, tpr, roc_auc
+    return report, fpr, tpr, roc_auc
 
 def run_naive_bayes():
 
