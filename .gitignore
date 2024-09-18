@@ -2,6 +2,8 @@ spam_detection/ling-spam.zip
 spam_detection/lingspam_public.tar.gz
 spam_detection/lingspam_public/*
 
+network_intrusion_detection/MachineLearningCSV.zip
+
 bank_fraud/creditcard.csv
 .git/
 venv/
