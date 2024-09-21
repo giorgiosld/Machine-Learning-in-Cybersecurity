@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 import os
 
@@ -13,6 +14,7 @@ label_mapping = {
 
 """
 Aggregate the labels in the dataset. This function converts the labels to lowercase and maps them to the corresponding
+:param df: The dataframe where analyze the code
 """
 def aggregate_labels(df):
     df.columns = df.columns.str.strip()
@@ -68,18 +70,39 @@ return the latter containing the labeled data.
 :param splitmode: The mode to split the data. If "floating", the data is split into randomize subset. Otherwise, the data
 is splitted from Monday–Wednesday forms the training dataset, and all the data from Thursday/Friday forms the test dataset
 """
-def get_dataset(path_to_files, splitmode):
-    list_csv = os.listdir(path_to_files)
-    # Create a single DataFrame with all the data
-    df = pd.concat([pd.read_csv(path_to_files + f) for f in list_csv if f.endswith('.csv')])
+def get_dataset(path_to_files, splitmode = "none"):
 
-    aggregate_labels(df)
-    # see_insight(df)
-    plot_distribution(df)
-    # one_hot_encoding(df)
-    d_training, d_testing = None, None
-    return d_training, d_testing
+    list_csv = [os.path.join(path_to_files, f) for f in os.listdir(path_to_files)]
+
+    # Create a single DataFrame with all the data
+    # df = pd.concat([pd.read_csv(path_to_files + f) for f in list_csv if f.endswith('.csv')])
+
+    df_train_list = []
+    df_test_list = []
+
+    for csv in list_csv:
+        filename = os.path.basename(csv)
+        if any(day in filename for day in ['Monday', 'Tuesday', 'Wednesday']):
+            df_train_list.append(pd.read_csv(csv))
+        elif any(day in filename for day in ['Thursday', 'Friday']):
+            df_test_list.append(pd.read_csv(csv))
+
+    d_train = pd.concat(df_train_list)
+    d_test = pd.concat(df_test_list)
+
+    aggregate_labels(d_train)
+    aggregate_labels(d_test)
+
+    if isinstance(splitmode, float) and 0 < splitmode < 1:
+        combined_df = pd.concat([d_train, d_test], ignore_index=True)
+        d_train, d_test = train_test_split(combined_df, test_size=(1 - splitmode), random_state=42,
+                                           stratify=combined_df['Label'])
+
+    plot_distribution(d_train)
+    plot_distribution(d_test)
+
+    return d_train, d_test
 
 if __name__ == "__main__":
     path_to_files = "MachineLearningCVE/"
-    get_dataset(path_to_files, "split")
+    get_dataset(path_to_files)
