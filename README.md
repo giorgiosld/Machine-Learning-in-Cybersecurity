@@ -10,6 +10,7 @@ The repository is organized according to the key topics explored during the "Mac
 detection topic.
 - [Spam Detection](spam_detection/): This directory contains the code and resources for the spam detection topic, which 
 was addressed in the first assignment of the course.
+- [Network Intrusion Detection](network_intrusion_detection/): This directory contains the code and resources for the network intrusion detection topic.
 
 ## Prerequisites
 - Python 3.x;
