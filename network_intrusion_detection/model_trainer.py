@@ -1,11 +1,12 @@
-from sklearn.base import BaseEstimator
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-class ModelTrainer(BaseEstimator):
+import os
+
+class ModelTrainer:
     """
     A class used to train and evaluate the model
 
@@ -24,6 +25,7 @@ class ModelTrainer(BaseEstimator):
             self.model = RandomForestClassifier()
         else:
             raise ValueError(f"Unknown model: {model}")
+        self.labels = ['Benign', 'Dos', 'PortScan', 'Exploit']
 
     def fit(self, X_train, y_train):
         """
@@ -35,21 +37,48 @@ class ModelTrainer(BaseEstimator):
         self.model.fit(X_train, y_train)
         return self
 
+    def plot(self, y_test, y_pred):
+        """
+        Function to plot the model and save it to a file
+        """
+        cm = confusion_matrix(y_test, y_pred)
+
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=self.labels, yticklabels=self.labels)
+        plt.title("Confusion Matrix")
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        path = "resources/cm_random_forest_byFloat.png"
+        save_dir = os.path.dirname(path)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        plt.savefig(path)
+        plt.show()
+
+
     def evaluate(self, X_test, y_test):
         """
         Evaluate the model with the test data
         :param X_test: The features of the test data
         :param y_test: The target variable of the test data
         """
-        labels = ['Benign', 'Dos', 'PortScan', 'Exploit']
+        # labels = ['Benign', 'Dos', 'PortScan', 'Exploit']
         y_pred = self.model.predict(X_test)
-        print(classification_report(y_test, y_pred, target_names=labels))
 
-        cm = confusion_matrix(y_test, y_pred)
-        
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
-        plt.title("Confusion Matrix")
-        plt.xlabel("Predicted")
-        plt.ylabel("True")
-        plt.show() 
+        labels_present = sorted(set(y_test))
+
+        # full_label_mapping = {0: 'Benign', 1: 'DoS', 2: 'Exploit', 3: 'PortScan'}
+        # full_label_mapping = {0: 'Benign', 1: 'DoS', 2: 'PortScan', 3: 'Exploit'}
+        # label_names = [full_label_mapping[l] for l in labels_present]
+
+        print(classification_report(y_test, y_pred, target_names=self.labels, digits=4))
+
+        self.plot(y_test, y_pred)
+        # cm = confusion_matrix(y_test, y_pred)
+        #
+        # sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=self.labels, yticklabels=self.labels)
+        # plt.title("Confusion Matrix")
+        # plt.xlabel("Predicted")
+        # plt.ylabel("True")
+        # plt.savefig(f'/resources/cm_decision_tree_by_day.png')
+        # plt.show()
 

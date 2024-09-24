@@ -1,8 +1,6 @@
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.utils import resample
 import pandas as pd
 
-class Resampler(BaseEstimator, TransformerMixin):
+class Resampler():
     """
     A class used to resample the dataset to balance the classes with under-sampling, over-sampling or SMOTE
 
@@ -10,16 +8,14 @@ class Resampler(BaseEstimator, TransformerMixin):
         mode: The resampling technique to be used. It can be 'under' or 'over'
     """
 
-    def __init__(self, strategy:'undersample'):
+    def __init__(self):
         """
         Initialize the Resampler class with the resampling technique
-        :param strategy: The resampling technique to be used. It can be 'under', 'over' or 'smote'
         """
-        self.strategy = strategy
 
-    def transform(self, X, y):
+    def balanced_undersample(self, X, y):
         """
-        Transform the dataset with the resampling technique
+        Perform balanced undersampling: undersample all classes to the size of the smallest class.
         :param X: The features of the dataset
         :param y: The target variable of the dataset
         :return: The resampled dataset
@@ -27,30 +23,22 @@ class Resampler(BaseEstimator, TransformerMixin):
         # Concatenate X and y for easier manipulation
         df = pd.concat([X, y], axis=1)
 
-        # Split by class
-        majority_class = df[y == y.value_counts().idxmax()]
-        minority_class = df[y == y.value_counts().idxmin()]
+        # Get the size of the smallest class
+        min_class_size = y.value_counts().min()
 
-        if self.strategy == 'undersample':
-            # Undersample majority class to match minority class size
-            majority_undersampled = resample(majority_class,
-                                             replace=False,  # Do not allow repetition
-                                             n_samples=len(minority_class),  # Match minority size
-                                             random_state=42)
-            resampled_df = pd.concat([majority_undersampled, minority_class])
+        # Resample each class to the size of the smallest class
+        resampled_dfs = []
+        for label in y.unique():
+            class_df = df[df[y.name] == label]
+            resampled_class_df = class_df.sample(n=min_class_size, random_state=42, replace=False)
+            resampled_dfs.append(resampled_class_df)
 
-        elif self.strategy == 'oversample':
-            # Oversample minority class to match majority class size
-            minority_oversampled = resample(minority_class,
-                                            replace=True,  # Allow repetition
-                                            n_samples=len(majority_class),  # Match majority size
-                                            random_state=42)
-            resampled_df = pd.concat([majority_class, minority_oversampled])
+        resampled_df = pd.concat(resampled_dfs)
 
-        else:
-            raise ValueError(f"Unknown strategy: {self.strategy}")
+        # Shuffle the dataset
+        resampled_df = resampled_df.sample(frac=1, random_state=42).reset_index(drop=True)
 
-        # Split resampled dataframe into X and y again
+        # Split back into X and y
         X_resampled = resampled_df.drop(columns=y.name)
         y_resampled = resampled_df[y.name]
 
