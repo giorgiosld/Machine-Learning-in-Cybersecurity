@@ -18,7 +18,7 @@ X_test_sampled, y_test_sampled = resampler.balanced_undersample(X_test, y_test)
 
 clf = ModelTrainer('random_forest')
 
-# clf.fit(X_train_sampled, y_train_sampled)
-# clf.evaluate(X_test_sampled, y_test_sampled)
 clf.fit(X_train, y_train)
 clf.evaluate(X_test, y_test)
+clf.plot(X_test, y_test)
+clf.get_feature_importance(X_train)
