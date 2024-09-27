@@ -1,6 +1,5 @@
 from model_trainer import ModelTrainer
 from preprocess import Preprocess
-from resampler import Resampler
 
 # Path to the directory containing the CSV files
 path = 'MachineLearningCVE'
@@ -13,15 +12,10 @@ d_train, d_test = preprocessor.get_dataset()
 X_train, y_train = d_train.drop(columns='Encoded_Label'), d_train['Encoded_Label']
 X_test, y_test = d_test.drop(columns='Encoded_Label'), d_test['Encoded_Label']
 
-resampler = Resampler()
-
-X_train_sampled, y_train_sampled = resampler.balanced_undersample(X_train, y_train)
-X_test_sampled, y_test_sampled = resampler.balanced_undersample(X_test, y_test)
-
 # To use DT or RF define for DT 'decision_tree' and for RF 'random_forest' as parameter in ModelTrainer
-clf = ModelTrainer('random_forest')
+clf = ModelTrainer('decision_tree')
 
 clf.fit(X_train, y_train)
-clf.evaluate(X_test, y_test)
-clf.plot(X_test, y_test)
+y_pred = clf.evaluate(X_test, y_test)
+clf.plot(y_test, y_pred)
 clf.get_feature_importance(X_train)

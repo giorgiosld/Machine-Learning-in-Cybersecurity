@@ -71,6 +71,7 @@ class ModelTrainer:
         """
         y_pred = self.model.predict(X_test)
         print(classification_report(y_test, y_pred, target_names=self.labels, digits=4))
+        return y_pred
 
     def get_feature_importance(self, X_train):
         """
