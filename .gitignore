@@ -4,6 +4,10 @@ spam_detection/lingspam_public/*
 
 network_intrusion_detection/MachineLearningCSV.zip
 
+*.csv
+*.tgz
+*.txt
+
 bank_fraud/creditcard.csv
 .git/
 venv/
