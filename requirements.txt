@@ -4,4 +4,4 @@ pandas
 matplotlib
 numpy
 seaborn
-tensorflow
+tensorflow[and-cuda]
