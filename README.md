@@ -12,7 +12,7 @@ detection topic.
 was addressed in the first assignment of the course.
 - [Network Intrusion Detection](network_intrusion_detection/): This directory contains the code and resources for the network intrusion detection topic.
 - [Malware Classification](malware_classification/): This directory contains the code and resources for the malware classification topic.
-
+- [Adversarial Machine Learning](adversarial_machine_learning/): This directory contains the code and resources for the adversarial machine learning topic.
 ## Prerequisites
 - Python 3.x;
 - virtualenv;
