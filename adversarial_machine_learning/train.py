@@ -67,6 +67,11 @@ class MNISTModel:
         print(f"Test accuracy: {test_acc}")
         return test_loss, test_acc
 
+    def save_model(self, filepath='mnist_cnn_model.h5'):
+        """Save the trained model to a file"""
+        self.model.save(filepath)
+        print(f"Model saved as {filepath}")
+
     def plot_results(self):
         """Plot training history"""
         if self.history is None:
@@ -118,6 +123,9 @@ if __name__ == "__main__":
 
     # Train the model
     mnist_model.train_model(x_train, y_train)
+
+    # Save the model to file
+    mnist_model.save_model('mnist_cnn_model.h5')
 
     # Evaluate the model
     mnist_model.evaluate_model(x_test, y_test)

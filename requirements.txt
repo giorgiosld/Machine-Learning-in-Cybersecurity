@@ -6,3 +6,4 @@ numpy
 seaborn
 tensorflow[and-cuda]
 lightgbm
+foolbox
