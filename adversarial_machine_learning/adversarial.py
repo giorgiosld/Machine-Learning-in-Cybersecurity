@@ -1,98 +1,111 @@
 import tensorflow as tf
-from tensorflow.keras.models import load_model
 import foolbox as fb
+import numpy as np
 import matplotlib.pyplot as plt
-import os
-import eagerpy as ep
+from tensorflow.keras.models import load_model
 
-class AdversarialMNIST:
-    def __init__(self, model_path='mnist_cnn_model.h5'):
-        # Load the trained model from train.py
-        self.model = load_model(model_path)
-        self.fmodel = fb.TensorFlowModel(self.model, bounds=(0, 1))
 
-        # Load and preprocess the MNIST data
-        self.x_train, self.y_train, self.x_test, self.y_test = self.load_data()
+def prepare_data():
+    """Load and preprocess MNIST test data"""
+    (_, _), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+    x_test = x_test.reshape(x_test.shape[0], 28, 28, 1).astype('float32') / 255.0
+    return x_test, y_test
 
-    def load_data(self):
-        """Load and preprocess MNIST data"""
-        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
-        # Normalize and reshape the dataset
-        x_train = x_train.reshape(x_train.shape[0], 28, 28, 1).astype('float32') / 255.0
-        x_test = x_test.reshape(x_test.shape[0], 28, 28, 1).astype('float32') / 255.0
+def create_foolbox_model(keras_model):
+    """Convert Keras model to Foolbox model"""
+    preprocessing = dict(mean=[0], std=[1])
+    bounds = (0, 1)
+    fmodel = fb.TensorFlowModel(keras_model, bounds=bounds, preprocessing=preprocessing)
+    return fmodel
 
-        return x_train, y_train, x_test, y_test
 
-    def generate_adversarial_examples(self, attack, x_samples, y_samples, epsilons):
-        """Generate adversarial examples"""
-        x_samples_ep = ep.astensor(x_samples)
-        y_samples_ep = ep.astensor(y_samples)
-        adversarial_samples = attack(self.fmodel, x_samples_ep, y_samples_ep, epsilons=epsilons)
-        return adversarial_samples.numpy()
+def generate_adversarial_grid(model, images, labels, attack_class):
+    """Generate adversarial examples for different target classes"""
+    n_samples = 10  # number of original digits to attack
+    results = np.zeros((n_samples, 10, 28, 28))  # 10x10 grid (original x target)
 
-    def create_adversarial_grid(self, attack, epsilons, num_samples=10, filename='resources/adversarial_grid.png'):
-        """Create a grid of adversarial examples for visualization"""
-        # Select 10 samples from the test set
-        x_samples = self.x_test[:num_samples]
-        y_samples = self.y_test[:num_samples]
+    # Initialize attack once
+    attack = attack_class()
+
+    for i in range(n_samples):
+        original_image = images[i:i + 1]
+        original_label = labels[i]
+
+        # Generate adversarial examples for each target class
+        for target in range(10):
+            if target != original_label:
+                criterion = fb.criteria.TargetedMisclassification(np.array([target]))
+
+                try:
+                    # Run the attack with specific parameters
+                    adversarial = attack.run(
+                        model,
+                        original_image,
+                        criterion,
+                        steps=100,  # Number of steps for the attack
+                        random_start=True  # Random initialization
+                    )
+                    if adversarial is not None:
+                        results[i, target] = adversarial.squeeze()
+                    else:
+                        results[i, target] = original_image.squeeze()
+                except Exception as e:
+                    print(f"Attack failed for digit {original_label} to target {target}: {str(e)}")
+                    results[i, target] = original_image.squeeze()
+            else:
+                results[i, target] = original_image.squeeze()
+
+    return results
+
+
+def plot_adversarial_grid(results, attack_name, save_path):
+    """Plot and save the grid of adversarial examples"""
+    fig, axes = plt.subplots(10, 10, figsize=(20, 20))
+    for i in range(10):
+        for j in range(10):
+            axes[i, j].imshow(results[i, j], cmap='gray')
+            axes[i, j].axis('off')
+
+    plt.suptitle(f'Adversarial Examples using {attack_name}', fontsize=16)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def main():
+    # Load the trained model
+    model = load_model('mnist_cnn_model.h5')
+
+    # Prepare data
+    x_test, y_test = prepare_data()
+
+    # Create Foolbox model
+    fmodel = create_foolbox_model(model)
+
+    # Define attacks (classes, not instances)
+    attacks = {
+        'L0': fb.attacks.L0FMNAttack,
+        'L1': fb.attacks.L1FMNAttack,
+        'L2': fb.attacks.L2FMNAttack,
+        'LInf': fb.attacks.LInfFMNAttack  # Note: This is the correct capitalization
+    }
+
+    # Generate and save results for each attack
+    for attack_name, attack_class in attacks.items():
+        print(f"Generating adversarial examples using {attack_name} norm...")
+
+        # Select first 10 test images
+        images = x_test[:10]
+        labels = y_test[:10]
 
         # Generate adversarial examples
-        adversarial_samples = self.generate_adversarial_examples(attack, x_samples, y_samples, epsilons)
+        results = generate_adversarial_grid(fmodel, images, labels, attack_class)
 
-        # Plot the original and adversarial samples in a grid format
-        fig, axes = plt.subplots(num_samples, len(epsilons) + 1, figsize=(15, 20))
-
-        for i in range(num_samples):
-            # Original Image
-            axes[i, 0].imshow(x_samples[i].squeeze(), cmap="gray")
-            axes[i, 0].set_title("Original")
-            axes[i, 0].axis('off')
-
-            # Adversarial Images for each epsilon
-            for j, adv_sample in enumerate(adversarial_samples[:, i]):
-                axes[i, j + 1].imshow(adv_sample.squeeze(), cmap="gray")
-                axes[i, j + 1].set_title(f"Epsilon {epsilons[j]:.2f}")
-                axes[i, j + 1].axis('off')
-
-        plt.tight_layout()
-        save_dir = os.path.dirname(filename)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        plt.savefig(filename)
-        plt.show()
-        print(f"Adversarial grid saved as {filename}")
-
-    def run_attack(self, attack_type='L2'):
-        """Run specified attack and visualize the results"""
-        if attack_type == 'L0':
-            # L0 variant of the Fast Minimum Norm attack
-            attack = fb.attacks.L0FMNAttack(steps=50)  # L0 Fast Minimum Norm Attack
-        elif attack_type == 'L1':
-            # L1 variant of the Fast Minimum Norm attack
-            attack = fb.attacks.L1FMNAttack(steps=50)  # L1 Fast Minimum Norm Attack
-        elif attack_type == 'L2':
-            # L2 variant of the Fast Minimum Norm attack
-            attack = fb.attacks.L2FMNAttack(steps=50)  # L2 Fast Minimum Norm Attack
-        elif attack_type == 'Linf':
-            # Linf variant of the Fast Minimum Norm attack
-            attack = fb.attacks.LinfFMNAttack(steps=50)  # Linf Fast Minimum Norm Attack
-        else:
-            raise ValueError("Unsupported attack type. Choose from 'L0', 'L1', 'L2', 'Linf'.")
-
-        # Define a range of epsilon values (perturbation levels) to use in the attack
-        initial_epsilon = 0.1
-        epsilons = [initial_epsilon * (0.9 ** i) for i in range(6)]  # Decreasing epsilons for visualization
-
-        # Create a grid of adversarial examples
-        self.create_adversarial_grid(attack, epsilons=epsilons, num_samples=10, filename=f'resources/adversarial_grid_{attack_type}.png')
+        # Save results
+        plot_adversarial_grid(results, attack_name, f'resources/adversarial_grid_{attack_name}.png')
+        print(f"Results saved as adversarial_grid_{attack_name}.png")
 
 
-# Main execution
 if __name__ == "__main__":
-    adversarial_mnist = AdversarialMNIST(model_path='mnist_cnn_model.h5')
-
-    # Run attack and generate grids for L0, L1, L2, and Linf norms
-    norms = ['L0', 'L1', 'L2', 'Linf']
-    for norm in norms:
-        adversarial_mnist.run_attack(attack_type=norm)
+    main()
