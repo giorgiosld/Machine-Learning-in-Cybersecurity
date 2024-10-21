@@ -46,7 +46,7 @@ print(f"Clean accuracy: {clean_acc * 100:.1f} %")
 
 # List of attacks to apply
 attacks = [
-    #(L0FMNAttack(), "L0FMNAttack"),
+    (L0FMNAttack(), "L0FMNAttack"),
     (L1FMNAttack(), "L1FMNAttack"),
     (L2FMNAttack(), "L2FMNAttack"),
     (LInfFMNAttack(), "LInfFMNAttack")
@@ -57,22 +57,32 @@ epsilons = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.9, 1, 2, 5, 7, 9]
 
 for attack, attack_name in attacks:
 
-    # Perform the attack
-    raw_adversarial, clipped_adversarial, success = attack(fmodel, images, labels, epsilons=epsilons)
+    if attack_name == "L0FMNAttack":
+        raw_adversarial, clipped_adversarial, success = attack(fmodel, images, labels, epsilons=None)
+        num_epsilons = 1
+    else:
+        # Perform the attack with multiple epsilons
+        raw_adversarial, clipped_adversarial, success = attack(fmodel, images, labels, epsilons=epsilons)
+        num_epsilons = len(epsilons)
 
     # Analyze the results
     print(f"\nResults for {attack_name}:")
-    for eps, advs_, succ_ in zip(epsilons, clipped_adversarial, success):
-        acc = fb.accuracy(fmodel, advs_, labels)
-        perturbation_sizes = (advs_ - images).norms.l2(axis=(1, 2, 3)).numpy()
-        print(f"  Epsilon {eps:<6}: Accuracy after attack: {acc * 100:4.1f} %, Success: {succ_}, Perturbation size: {perturbation_sizes}")
+    if attack_name == "L0FMNAttack":
+        acc = fb.accuracy(fmodel, clipped_adversarial, labels)
+        perturbation_sizes = (clipped_adversarial - images).norms.l0(axis=(1, 2, 3)).numpy()
+        print(f"  Attack: Accuracy after attack: {acc * 100:4.1f} %, Perturbation size: {perturbation_sizes}")
+    else:
+        for eps, advs_, succ_ in zip(epsilons, clipped_adversarial, success):
+            acc = fb.accuracy(fmodel, advs_, labels)
+            perturbation_sizes = (advs_ - images).norms.l2(axis=(1, 2, 3)).numpy()
+            print(
+                f"  Epsilon {eps:<6}: Accuracy after attack: {acc * 100:4.1f} %, Success: {succ_}, Perturbation size: {perturbation_sizes}")
 
     # Number of images in the batch
     num_images = len(images)
-    num_epsilons = len(epsilons)
 
     # Set up the figure to visualize the grid
-    fig, axes = plt.subplots(num_images, num_epsilons + 1, figsize=(15, 15))
+    fig, axes = plt.subplots(num_images, num_epsilons + 1 if attack_name != "L0FMNAttack" else 2, figsize=(15, 15))
     fig.suptitle(f'Adversarial Examples for {attack_name}', fontsize=20)
 
     # Loop through each sample and each epsilon value
@@ -86,13 +96,21 @@ for attack, attack_name in attacks:
         ax.axis('off')
 
         # Plot the adversarial images for each epsilon value in subsequent columns
-        for j in range(num_epsilons):
-            ax = axes[i, j + 1]
-            adversarial_img = clipped_adversarial[j][i].numpy().squeeze()
+        if attack_name == "L0FMNAttack":
+            ax = axes[i, 1]
+            adversarial_img = clipped_adversarial[i].numpy().squeeze()
             ax.imshow(adversarial_img, cmap='gray')
             if i == 0:
-                ax.set_title(f'Eps: {epsilons[j]}', fontsize=10)
+                ax.set_title(f'L0 Attack', fontsize=10)
             ax.axis('off')
+        else:
+            for j in range(num_epsilons):
+                ax = axes[i, j + 1]
+                adversarial_img = clipped_adversarial[j][i].numpy().squeeze()
+                ax.imshow(adversarial_img, cmap='gray')
+                if i == 0:
+                    ax.set_title(f'Eps: {epsilons[j]}', fontsize=10)
+                ax.axis('off')
 
     # Remove the space between subplots to make them more compact
     plt.subplots_adjust(wspace=0, hspace=0)
