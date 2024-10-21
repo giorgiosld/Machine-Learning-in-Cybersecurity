@@ -1,167 +1,86 @@
 import tensorflow as tf
 import foolbox as fb
+import eagerpy as ep
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import load_model
-import eagerpy as ep
+from foolbox.attacks import L2FMNAttack
 
+# Load your MNIST model
+model_path = "mnist_cnn_model.h5"
+model = tf.keras.models.load_model(model_path)
 
-def prepare_data():
-    """Load and preprocess MNIST test data, ensuring digits 0-9 are in order"""
-    (_, _), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-    x_test = x_test.reshape(x_test.shape[0], 28, 28, 1).astype('float32') / 255.0
+# Define preprocessing used by Foolbox
+preprocessing = dict(mean=0.0, std=1.0)  # Assuming the input is normalized in range [0, 1]
 
-    ordered_images = []
-    ordered_labels = []
+# Wrap the model in a Foolbox model
+fmodel = fb.TensorFlowModel(model, bounds=(0, 1), preprocessing=preprocessing)
 
-    for digit in range(10):
-        digit_idx = np.where(y_test == digit)[0][0]
-        ordered_images.append(x_test[digit_idx])
-        ordered_labels.append(y_test[digit_idx])
+# Load MNIST test data
+mnist = tf.keras.datasets.mnist
+(_, _), (x_test, y_test) = mnist.load_data()
+x_test = x_test.reshape(x_test.shape[0], 28, 28, 1).astype('float32') / 255.0  # Normalize to [0, 1]
 
-    return np.array(ordered_images), np.array(ordered_labels)
+# Convert labels to int32 (important for compatibility with Foolbox)
+y_test = y_test.astype(np.int32)
 
+# Convert data to EagerPy tensors backed by TensorFlow
+images = ep.astensor(tf.convert_to_tensor(x_test[:10]))  # Use a batch of 10 for example
+labels = ep.astensor(tf.convert_to_tensor(y_test[:10]))
 
-def create_foolbox_model(keras_model):
-    """Convert Keras model to Foolbox model"""
-    preprocessing = dict(mean=0.0, std=1.0)
-    bounds = (0, 1)
-    fmodel = fb.TensorFlowModel(keras_model, bounds=bounds, preprocessing=preprocessing)
-    return fmodel
+# Clean accuracy
+clean_acc = fb.accuracy(fmodel, images, labels)
+print(f"Clean accuracy: {clean_acc * 100:.1f} %")
 
+# Apply the Fast Minimum Norm (FMN) attack
+attack = L2FMNAttack()  # You can also experiment with other norms (L0, L1, L2, Linf)
+epsilons = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.9, 1, 2, 5, 7, 9]
 
-def generate_adversarial_grid(fmodel, images, labels, attack_class):
-    """Generate adversarial examples using specified Foolbox attack"""
-    n_samples = 10
-    results = np.zeros((n_samples, 10, 28, 28))
+# Perform the attack
+raw_adversarial, clipped_adversarial, success = attack(fmodel, images, labels, epsilons=epsilons)
 
-    # Base attack parameters
-    attack_params = {
-        'steps': 200,
-        'binary_search_steps': 10
-    }
+# Analyze the results
+print("\nAdversarial sample generation results:")
+for eps, advs_, succ_ in zip(epsilons, clipped_adversarial, success):
+    acc = fb.accuracy(fmodel, advs_, labels)
+    perturbation_sizes = (advs_ - images).norms.l2(axis=(1, 2, 3)).numpy()
+    print(f"  Epsilon {eps:<6}: Accuracy after attack: {acc * 100:4.1f} %, Success: {succ_}, Perturbation size: {perturbation_sizes}")
 
-    epsilon_sets = {
-        'L2': [0.1, 0.5, 1.0, 1.5, 2.0],
-        'L1': [1.0, 3.0, 5.0, 7.0, 10.0],
-        'L0': [1, 5, 10, 15, 20],
-        'LInf': [0.01, 0.05, 0.1, 0.2, 0.3]
-    }
+# Number of images in the batch
+num_images = len(images)
+num_epsilons = len(epsilons)
 
-    # Get attack name from class
-    attack_name = attack_class.__name__
-    attack_type = next((k for k in epsilon_sets.keys() if k in attack_name), 'L2')
-    epsilons = epsilon_sets[attack_type]
+# Sort the images and labels based on the labels (ascending order from 0 to 9)
+sorted_indices = np.argsort(y_test[:num_images])
+sorted_images = images[sorted_indices]
+sorted_labels = y_test[sorted_indices]
 
-    # Initialize attack
-    attack = attack_class(**attack_params)
+# Set up the figure to visualize the grid
+fig, axes = plt.subplots(num_images, num_epsilons + 1, figsize=(12, 12))
+fig.suptitle('Adversarial Examples for Different Epsilon Values', fontsize=20)
 
-    for i in range(n_samples):
-        original_image = images[i:i + 1]
-        original_label = labels[i]
+# Loop through each sample and each epsilon value
+for i in range(num_images):
+    # Plot the original image in the first column
+    ax = axes[i, 0]
+    original_img = sorted_images[i].numpy().squeeze()
+    ax.imshow(original_img, cmap='gray')
+    if i == 0:  # Label the epsilon value on the top row
+        ax.set_title(f'Original', fontsize=10)
+    ax.axis('off')
 
-        # Store original image in diagonal position
-        results[i, original_label] = original_image.squeeze()
+    # Plot the adversarial images for each epsilon value in subsequent columns
+    for j in range(num_epsilons):
+        ax = axes[i, j + 1]
+        adversarial_img = clipped_adversarial[j][sorted_indices[i]].numpy().squeeze()
+        ax.imshow(adversarial_img, cmap='gray')
+        if i == 0:  # Label the epsilon value on the top row
+            ax.set_title(f'Eps: {epsilons[j]}', fontsize=10)
+        ax.axis('off')
 
-        for target in range(10):
-            if target != original_label:
-                success = False
+# Remove the space between subplots to make them more compact
+plt.subplots_adjust(wspace=0, hspace=0)
 
-                # Convert inputs to EagerPy tensors
-                images_ep = ep.astensor(original_image)
-                target_ep = ep.astensor(np.array([target]))
-                criterion = fb.criteria.TargetedMisclassification(target_ep)
-
-                # Try different epsilon values
-                for epsilon in epsilons:
-                    if success:
-                        break
-
-                    try:
-                        print(
-                            f"\nTrying {attack_type} attack from {original_label} to {target} with epsilon: {epsilon}")
-
-                        # Run attack with current epsilon
-                        raw_advs, clipped_advs, is_successful = attack(fmodel, images_ep, criterion, epsilons=[epsilon])
-
-                        if is_successful.numpy().any():
-                            adversarial = clipped_advs.numpy()
-                            results[i, target] = adversarial.squeeze()
-                            success = True
-
-                            # Calculate and print perturbation magnitude
-                            l2_dist = np.linalg.norm((adversarial - original_image).reshape(-1))
-                            linf_dist = np.max(np.abs(adversarial - original_image))
-                            print(f"Success: {original_label} -> {target}")
-                            print(f"L2 distance: {l2_dist:.4f}")
-                            print(f"L∞ distance: {linf_dist:.4f}")
-                            break
-
-                    except Exception as e:
-                        print(f"Attack failed with epsilon {epsilon}: {str(e)}")
-                        continue
-
-                if not success:
-                    print(f"\nAll attempts failed for {original_label} -> {target}")
-                    results[i, target] = original_image.squeeze()
-
-    return results
-
-
-def plot_adversarial_grid(results, attack_name, filename):
-    """Plot and save grid of adversarial examples"""
-    fig, axes = plt.subplots(10, 10, figsize=(15, 15))
-    plt.suptitle(f'Adversarial Examples using {attack_name}', fontsize=16)
-
-    # Add column headers
-    for j in range(10):
-        axes[0, j].set_title(f'Target: {j}', fontsize=10)
-
-    # Add row labels
-    for i in range(10):
-        axes[i, 0].set_ylabel(f'Original: {i}', rotation=0, labelpad=25, fontsize=10)
-
-    # Plot images
-    for i in range(10):
-        for j in range(10):
-            im = axes[i, j].imshow(results[i, j], cmap='gray', vmin=0, vmax=1)
-            axes[i, j].axis('off')
-
-            # Highlight diagonal (original images) with a border
-            if i == j:
-                axes[i, j].patch.set_edgecolor('red')
-                axes[i, j].patch.set_linewidth(2)
-
-    plt.tight_layout()
-    plt.savefig(filename, bbox_inches='tight', dpi=200)
-    plt.close()
-
-
-def main():
-    print("Loading model...")
-    model = load_model('mnist_cnn_model.h5')
-
-    print("Preparing data...")
-    x_test, y_test = prepare_data()
-
-    print("Creating Foolbox model...")
-    fmodel = create_foolbox_model(model)
-
-    # Define attacks
-    attacks = {
-        'L2': fb.attacks.L2FMNAttack,
-        'L1': fb.attacks.L1FMNAttack,
-        'L0': fb.attacks.L0FMNAttack,
-        'LInf': fb.attacks.LInfFMNAttack
-    }
-
-    # Generate and save results for each attack
-    for attack_name, attack_class in attacks.items():
-        print(f"\nGenerating adversarial examples using {attack_name} norm...")
-        results = generate_adversarial_grid(fmodel, x_test, y_test, attack_class)
-        plot_adversarial_grid(results, attack_name, f'resources/adversarial_grid_{attack_name}.png')
-        print(f"Results saved as adversarial_grid_{attack_name}.png")
-
-
-if __name__ == "__main__":
-    main()
+# Adjust layout and show plot
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+plt.savefig('resources/adversarial_grid.png')
+plt.show()
