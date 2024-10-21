@@ -135,7 +135,8 @@ if __name__ == "__main__":
         (L0FMNAttack(), "L0FMNAttack"),
         (L1FMNAttack(), "L1FMNAttack"),
         (L2FMNAttack(), "L2FMNAttack"),
-        (LInfFMNAttack(), "LInfFMNAttack")
+        (LInfFMNAttack(), "LInfFMNAttack"),
+        (fb.attacks.L2ClippingAwareRepeatedAdditiveGaussianNoiseAttack(), "L2ClippingAwareRepeatedAdditiveGaussianNoiseAttack"),
     ]
 
     # Define epsilon values to use in the attacks
