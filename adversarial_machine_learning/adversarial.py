@@ -3,7 +3,7 @@ import foolbox as fb
 import eagerpy as ep
 import numpy as np
 import matplotlib.pyplot as plt
-from foolbox.attacks import L2FMNAttack
+from foolbox.attacks import L2FMNAttack, L0FMNAttack, L1FMNAttack, LInfFMNAttack
 
 # Load your MNIST model
 model_path = "mnist_cnn_model.h5"
@@ -44,52 +44,61 @@ labels = ep.astensor(tf.convert_to_tensor(y_selected))
 clean_acc = fb.accuracy(fmodel, images, labels)
 print(f"Clean accuracy: {clean_acc * 100:.1f} %")
 
+# List of attacks to apply
+attacks = [
+    #(L0FMNAttack(), "L0FMNAttack"),
+    (L1FMNAttack(), "L1FMNAttack"),
+    (L2FMNAttack(), "L2FMNAttack"),
+    (LInfFMNAttack(), "LInfFMNAttack")
+]
+
 # Apply the Fast Minimum Norm (FMN) attack
-attack = L2FMNAttack()
 epsilons = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.9, 1, 2, 5, 7, 9]
 
-# Perform the attack
-raw_adversarial, clipped_adversarial, success = attack(fmodel, images, labels, epsilons=epsilons)
+for attack, attack_name in attacks:
 
-# Analyze the results
-print("\nAdversarial sample generation results:")
-for eps, advs_, succ_ in zip(epsilons, clipped_adversarial, success):
-    acc = fb.accuracy(fmodel, advs_, labels)
-    perturbation_sizes = (advs_ - images).norms.l2(axis=(1, 2, 3)).numpy()
-    print(f"  Epsilon {eps:<6}: Accuracy after attack: {acc * 100:4.1f} %, Success: {succ_}, Perturbation size: {perturbation_sizes}")
+    # Perform the attack
+    raw_adversarial, clipped_adversarial, success = attack(fmodel, images, labels, epsilons=epsilons)
 
-# Number of images in the batch
-num_images = len(images)
-num_epsilons = len(epsilons)
+    # Analyze the results
+    print(f"\nResults for {attack_name}:")
+    for eps, advs_, succ_ in zip(epsilons, clipped_adversarial, success):
+        acc = fb.accuracy(fmodel, advs_, labels)
+        perturbation_sizes = (advs_ - images).norms.l2(axis=(1, 2, 3)).numpy()
+        print(f"  Epsilon {eps:<6}: Accuracy after attack: {acc * 100:4.1f} %, Success: {succ_}, Perturbation size: {perturbation_sizes}")
 
-# Set up the figure to visualize the grid
-fig, axes = plt.subplots(num_images, num_epsilons + 1, figsize=(15, 15))
-fig.suptitle('Adversarial Examples for Different Epsilon Values', fontsize=20)
+    # Number of images in the batch
+    num_images = len(images)
+    num_epsilons = len(epsilons)
 
-# Loop through each sample and each epsilon value
-for i in range(num_images):
-    # Plot the original image in the first column
-    ax = axes[i, 0]
-    original_img = images[i].numpy().squeeze()
-    ax.imshow(original_img, cmap='gray')
-    if i == 0:
-        ax.set_title(f'Original', fontsize=10)
-    ax.axis('off')
+    # Set up the figure to visualize the grid
+    fig, axes = plt.subplots(num_images, num_epsilons + 1, figsize=(15, 15))
+    fig.suptitle(f'Adversarial Examples for {attack_name}', fontsize=20)
 
-    # Plot the adversarial images for each epsilon value in subsequent columns
-    for j in range(num_epsilons):
-        ax = axes[i, j + 1]
-        adversarial_img = clipped_adversarial[j][i].numpy().squeeze()
-        ax.imshow(adversarial_img, cmap='gray')
+    # Loop through each sample and each epsilon value
+    for i in range(num_images):
+        # Plot the original image in the first column
+        ax = axes[i, 0]
+        original_img = images[i].numpy().squeeze()
+        ax.imshow(original_img, cmap='gray')
         if i == 0:
-            ax.set_title(f'Eps: {epsilons[j]}', fontsize=10)
+            ax.set_title(f'Original', fontsize=10)
         ax.axis('off')
 
-# Remove the space between subplots to make them more compact
-plt.subplots_adjust(wspace=0, hspace=0)
+        # Plot the adversarial images for each epsilon value in subsequent columns
+        for j in range(num_epsilons):
+            ax = axes[i, j + 1]
+            adversarial_img = clipped_adversarial[j][i].numpy().squeeze()
+            ax.imshow(adversarial_img, cmap='gray')
+            if i == 0:
+                ax.set_title(f'Eps: {epsilons[j]}', fontsize=10)
+            ax.axis('off')
 
-# Adjust layout and show plot
-plt.tight_layout(rect=[0, 0, 1, 0.96])
-plt.savefig('resources/adversarial_grid.png')
-plt.show()
+    # Remove the space between subplots to make them more compact
+    plt.subplots_adjust(wspace=0, hspace=0)
+
+    # Adjust layout and show plot
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig(f'resources/adversarial_grid_{attack_name}.png')
+    plt.show()
 
