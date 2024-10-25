@@ -1,150 +1,170 @@
-import tensorflow as tf
-import foolbox as fb
-import eagerpy as ep
 import numpy as np
 import matplotlib.pyplot as plt
-from foolbox.attacks import L2FMNAttack, L0FMNAttack, L1FMNAttack, LInfFMNAttack
+import tensorflow as tf
+import eagerpy as ep
+
+from foolbox import TensorFlowModel, accuracy, samples, Model, TargetedMisclassification
+from foolbox.attacks import L1FMNAttack, L2FMNAttack, LInfFMNAttack, L0FMNAttack
 
 
-class AdversarialTester:
-    def __init__(self, model_path, attack_list, epsilons):
-        self.model_path = model_path
-        self.attacks = attack_list
-        self.epsilons = epsilons
-        self.fmodel = None
-        self.images = None
-        self.labels = None
+class MNISTAdversarialAttacker:
+    def __init__(self, model_path):
+        self.model = tf.keras.models.load_model(model_path)
+        self.preprocessing = dict()
+        self.fmodel: Model = TensorFlowModel(self.model, bounds=(0, 1), preprocessing=self.preprocessing)
+        (self.mnist_images, self.mnist_labels), _ = tf.keras.datasets.mnist.load_data()
+        self.mnist_images = self._preprocess_images(self.mnist_images)
+        self.attacks = self._initialize_attacks()
 
-    def load_model(self):
-        """Load the pre-trained MNIST model and wrap it with Foolbox."""
-        model = tf.keras.models.load_model(self.model_path)
-        preprocessing = dict(mean=0.0, std=1.0)
-        self.fmodel = fb.TensorFlowModel(model, bounds=(0, 1), preprocessing=preprocessing)
-        print("Model loaded successfully.")
+    def _preprocess_images(self, images):
+        """Preprocess MNIST images to be in the appropriate format."""
+        images = images.astype(np.float32) / 255.0
+        return np.expand_dims(images, axis=-1)
 
-    def prepare_data(self):
-        """Prepare MNIST data for testing, ensuring we have one of each digit."""
-        mnist = tf.keras.datasets.mnist
-        (_, _), (x_test, y_test) = mnist.load_data()
+    def _initialize_attacks(self):
+        """Initialize different types of attacks to be used."""
+        attack_params = [0.01, 0.1, 1, 10, 100]
+        return [
+            (L1FMNAttack(), "L1FMNAttack", attack_params),
+            (L2FMNAttack(), "L2FMNAttack", attack_params),
+            (LInfFMNAttack(), "LInfFMNAttack", attack_params),
+            (L0FMNAttack(), "L0FMNAttack", None)
+        ]
 
-        # Initialize arrays to store one example of each digit (0-9)
-        unique_digits = {}
-        for i in range(len(y_test)):
-            if y_test[i] not in unique_digits:
-                unique_digits[y_test[i]] = x_test[i]
-            if len(unique_digits) == 10:
-                break
+    def run_attacks(self):
+        """Run all configured attacks on MNIST samples."""
+        for attack, attack_name, epsilons in self.attacks:
+            self._perform_attack(attack, attack_name, epsilons)
 
-        # Prepare selected images and labels
-        x_selected = np.array([unique_digits[digit] for digit in range(10)])
-        y_selected = np.array([digit for digit in range(10)])
+    def _perform_attack(self, attack, attack_name, epsilons):
+        """Perform a specific attack and visualize the results."""
+        fig, axes = plt.subplots(10, 10, figsize=(10, 10))
+        fig.suptitle(f'Adversarial Examples Grid - {attack_name}', fontsize=16)
 
-        # Normalize and reshape the dataset
-        x_selected = x_selected.reshape(x_selected.shape[0], 28, 28, 1).astype('float32') / 255.0
-        y_selected = y_selected.astype(np.int32)
+        for original_label in range(10):
+            images, labels = self._get_sample_for_label(original_label)
+            self._display_original_image(axes, original_label, images)
 
-        # Convert data to EagerPy tensors backed by TensorFlow
-        self.images = ep.astensor(tf.convert_to_tensor(x_selected))
-        self.labels = ep.astensor(tf.convert_to_tensor(y_selected))
+            for target_label in range(10):
+                if target_label == original_label:
+                    continue
 
-        print("Data prepared successfully.")
+                print(f"\nOriginal label: {original_label}, Target label: {target_label}")
+                self._attack_target_label(attack, images, labels, target_label, epsilons, axes, original_label)
 
-    def evaluate_clean_accuracy(self):
-        """Evaluate the accuracy of the model on clean data."""
-        clean_acc = fb.accuracy(self.fmodel, self.images, self.labels)
-        print(f"Clean accuracy: {clean_acc * 100:.1f} %")
+        self._finalize_plot(fig, attack_name)
 
-    def perform_attack(self, attack, attack_name):
-        """Perform an adversarial attack."""
-        if attack_name == "L0FMNAttack":
-            raw_adversarial, clipped_adversarial, success = attack(self.fmodel, self.images, self.labels,
-                                                                   epsilons=None)
-            num_epsilons = 1
-        else:
-            raw_adversarial, clipped_adversarial, success = attack(self.fmodel, self.images, self.labels,
-                                                                   epsilons=self.epsilons)
-            num_epsilons = len(self.epsilons)
+    def _get_sample_for_label(self, label):
+        """Get a single sample image and label tensor for a given label."""
+        index = np.where(self.mnist_labels == label)[0][0]
+        images = ep.astensor(tf.convert_to_tensor(self.mnist_images[index:index + 1]))
+        labels = ep.astensor(tf.convert_to_tensor(np.array([self.mnist_labels[index]], dtype=np.int32)))
+        return images, labels
 
-        return raw_adversarial, clipped_adversarial, success, num_epsilons
+    def _display_original_image(self, axes, original_label, images):
+        """Display the original image on the plot grid."""
+        ax = axes[original_label, original_label]
+        original_image = np.clip(images[0].numpy() * 255, 0, 255).astype(np.uint8).squeeze()
+        ax.imshow(original_image, cmap='gray')
+        ax.axis('off')
+        ax.set_ylabel(f'{original_label}', fontsize=8, rotation=0, labelpad=20)
 
-    def analyze_results(self, clipped_adversarial, success, attack_name):
-        """Analyze and print the results of an adversarial attack."""
-        print(f"\nResults for {attack_name}:")
-        if attack_name == "L0FMNAttack":
-            acc = fb.accuracy(self.fmodel, clipped_adversarial, self.labels)
-            perturbation_sizes = (clipped_adversarial - self.images).norms.l0(axis=(1, 2, 3)).numpy()
-            print(f"  Attack: Accuracy after attack: {acc * 100:4.1f} %, Perturbation size: {perturbation_sizes}")
-        else:
-            for eps, advs_, succ_ in zip(self.epsilons, clipped_adversarial, success):
-                acc = fb.accuracy(self.fmodel, advs_, self.labels)
-                perturbation_sizes = (advs_ - self.images).norms.l2(axis=(1, 2, 3)).numpy()
-                print(
-                    f"  Epsilon {eps:<6}: Accuracy after attack: {acc * 100:4.1f} %, Success: {succ_}, Perturbation size: {perturbation_sizes}")
+    def _attack_target_label(self, attack, images, labels, target_label, epsilons, axes, original_label):
+        """Attempt an adversarial attack towards a target label."""
+        criteria = TargetedMisclassification(
+            ep.astensor(tf.convert_to_tensor(np.array([target_label], dtype=np.int32))))
 
-    def visualize_attack(self, clipped_adversarial, success, attack_name, num_epsilons):
-        """Visualize the results of an adversarial attack."""
-        num_images = len(self.images)
+        try:
+            raw_adversarial, clipped_adversarial, success = attack(self.fmodel, images, criteria, epsilons=epsilons)
+            self._evaluate_attack(axes, original_label, target_label, raw_adversarial, clipped_adversarial, success,
+                                  epsilons, images, labels)
+        except Exception as e:
+            print(f"Error during attack: {str(e)}")
 
-        # Set up the figure to visualize the grid for the current attack
-        fig, axes = plt.subplots(num_images, num_epsilons + 1 if attack_name != "L0FMNAttack" else 2, figsize=(15, 15))
-        fig.suptitle(f'Adversarial Examples for {attack_name}', fontsize=20)
+    def _evaluate_attack(self, axes, original_label, target_label, raw_adversarial, clipped_adversarial, success,
+                         epsilons, images, labels):
+        """Evaluate the success of an attack and display the adversarial image."""
+        best_adversarial, attack_succeeded = self._get_best_adversarial(raw_adversarial, clipped_adversarial, success,
+                                                                        epsilons, images, labels)
 
-        for i in range(num_images):
-            # Plot the original image in the first column
-            ax = axes[i, 0]
-            original_img = self.images[i].numpy().squeeze()
-            ax.imshow(original_img, cmap='gray')
-            if i == 0:
-                ax.set_title(f'Original', fontsize=10)
+        if best_adversarial is not None:
+            ax = axes[original_label, target_label]
+            adversarial_display = np.clip(best_adversarial * 255, 0, 255).astype(np.uint8).squeeze()
+            ax.imshow(adversarial_display, cmap='gray')
             ax.axis('off')
+            ax.patch.set_edgecolor('red' if not attack_succeeded else 'green')
+            ax.patch.set_linewidth(2)
 
-            # Plot the adversarial images for each epsilon value in subsequent columns
-            if attack_name == "L0FMNAttack":
-                ax = axes[i, 1]
-                adversarial_img = clipped_adversarial[i].numpy().squeeze()
-                ax.imshow(adversarial_img, cmap='gray')
-                if i == 0:
-                    ax.set_title(f'L0 Attack', fontsize=10)
-                ax.axis('off')
+    def _get_best_adversarial(self, raw_adversarial, clipped_adversarial, success, epsilons, images, labels):
+        """Get the best adversarial example generated by the attack."""
+        if epsilons is None:
+            return self._check_attack_result(raw_adversarial, images, labels)
+
+        best_adversarial = None
+        attack_succeeded = False
+        for eps, advs_, succ_ in zip(epsilons, clipped_adversarial, success):
+            adversarial, success = self._check_attack_result(advs_, images, labels, eps)
+            if adversarial is not None:
+                best_adversarial = adversarial
+                if success:
+                    attack_succeeded = True
+                    break
+        return best_adversarial, attack_succeeded
+
+    def _check_attack_result(self, advs_, images, labels, eps=None):
+        """Check if the attack succeeded in creating an adversarial example."""
+        if advs_ is None or (isinstance(advs_, ep.Tensor) and np.prod(advs_.shape) == 0):
+            print("  Attack failed to produce adversarial examples")
+            return None, False
+
+        if not isinstance(advs_, ep.Tensor):
+            advs_ = ep.astensor(tf.convert_to_tensor(advs_))
+
+        if len(advs_.shape) != 4:
+            print("  Invalid adversarial example shape")
+            return None, False
+
+        try:
+            acc2 = accuracy(self.fmodel, advs_, labels)
+            success = acc2 < 1.0
+
+            if eps is None:
+                modified_pixels = self._calculate_l0_norm(advs_, images)
+                print(f"  L0 norm: modified pixels = {modified_pixels[0]}, accuracy = {acc2 * 100:4.1f}%")
             else:
-                for j in range(num_epsilons):
-                    ax = axes[i, j + 1]
-                    adversarial_img = clipped_adversarial[j][i].numpy().squeeze()
-                    ax.imshow(adversarial_img, cmap='gray')
-                    if i == 0:
-                        ax.set_title(f'Eps: {self.epsilons[j]}', fontsize=10)
-                    ax.axis('off')
+                perturbation_sizes = (advs_ - images).norms.linf(axis=(1, 2, 3)).numpy()
+                print(f"  norm ≤ {eps:<6}: {acc2 * 100:4.1f} %  perturbation:", ' '.join(map(str, perturbation_sizes)))
 
-        plt.subplots_adjust(wspace=0, hspace=0)
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.savefig(f'resources/adversarial_grid_{attack_name}.png')
+            predicted_class, confidence = self._get_prediction_details(advs_)
+            print(f"  Predicted as class {predicted_class} with {confidence:.2f}% confidence")
+
+            return advs_[0].numpy(), success
+        except Exception as e:
+            print(f"  Error processing attack result: {str(e)}")
+            return None, False
+
+    def _calculate_l0_norm(self, advs_, images):
+        """Calculate the L0 norm of the perturbation."""
+        diff = (advs_ - images).numpy()
+        return np.sum(np.abs(diff) > 1e-10, axis=(1, 2, 3))
+
+    def _get_prediction_details(self, advs_):
+        """Get prediction class and confidence of the adversarial example."""
+        pred = self.fmodel(advs_).numpy()
+        predicted_class = np.argmax(pred[0])
+        confidence = pred[0][predicted_class] * 100
+        return predicted_class, confidence
+
+    def _finalize_plot(self, fig, attack_name):
+        """Finalize the plot layout and save the figure."""
+        fig.text(0.5, 0.92, 'Output classification', ha='center', fontsize=12)
+        fig.text(0.04, 0.5, 'Input class', va='center', rotation='vertical', fontsize=12)
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.85, left=0.1, bottom=0.1)
+        plt.savefig(f'resources/targeted_misclassification_{attack_name}.png')
         plt.show()
-
-    def run_all_attacks(self):
-        """Run all attacks specified and visualize the results."""
-        for attack, attack_name in self.attacks:
-            raw_adversarial, clipped_adversarial, success, num_epsilons = self.perform_attack(attack, attack_name)
-            self.analyze_results(clipped_adversarial, success, attack_name)
-            self.visualize_attack(clipped_adversarial, success, attack_name, num_epsilons)
-            print(f"Completed visualization for {attack_name}.")
 
 
 if __name__ == "__main__":
-    # List of attacks to apply
-    attack_list = [
-        (L0FMNAttack(), "L0FMNAttack"),
-        (L1FMNAttack(), "L1FMNAttack"),
-        (L2FMNAttack(), "L2FMNAttack"),
-        (LInfFMNAttack(), "LInfFMNAttack"),
-        (fb.attacks.L2ClippingAwareRepeatedAdditiveGaussianNoiseAttack(), "L2ClippingAwareRepeatedAdditiveGaussianNoiseAttack"),
-    ]
-
-    # Define epsilon values to use in the attacks
-    epsilons = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.9, 1, 2, 5, 7, 9]
-
-    # Instantiate and run the AdversarialTester
-    tester = AdversarialTester("mnist_cnn_model.h5", attack_list, epsilons)
-    tester.load_model()
-    tester.prepare_data()
-    tester.evaluate_clean_accuracy()
-    tester.run_all_attacks()
+    attacker = MNISTAdversarialAttacker("mnist_cnn_model.h5")
+    attacker.run_attacks()
